@@ -640,7 +640,7 @@ class scene
 {
     static constexpr int width = 1280, height = 720;
     static constexpr int ribbons = 5, band = 38; // each ribbon covers middle - 38 .. middle + 38
-    static constexpr std::uint32_t ribbon_color = 0xd4cef8, highlight_color = 0xe7e5ff;
+    static constexpr std::uint32_t ribbon_color = 0xd4cef8, highlight_color = 0xff372d;
     // The ribbons drift by less than 5 px/s, so redrawing them at 20 Hz looks the same as every frame.
     static constexpr double layer_period = 1.0 / 20;
     std::vector<std::uint32_t> m_background;
@@ -914,7 +914,7 @@ public:
             {
                 const float dx = (x - 1000.f) / 1400.f;
                 const float glow = 1.f - std::min(1.f, std::sqrt(dx * dx + dy2));
-                const unsigned int r = unsigned(65 + 25 * v + 33 * glow), g = unsigned(68 - 14 * v + 41 * glow), b = unsigned(105 - 1 * v + 45 * glow);
+                const unsigned int r = unsigned(12 + 20 * v + 65 * glow), g = unsigned(2 + 3 * v + 5 * glow), b = unsigned(2 + 3 * v + 5 * glow);
                 m_background[y * width + x] = 0xff000000 | (r << 16) | (g << 8) | b;
             }
         }
