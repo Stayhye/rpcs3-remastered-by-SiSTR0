@@ -14,17 +14,26 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "C:\ps4tools"
-          # 1. OpenOrbis PS4 Toolchain v0.5.4
-          curl.exe -L "https://github.com" -o "C:\ps4tools\oo.zip"
-          Expand-Archive "C:\ps4tools\oo.zip" -DestinationPath "C:\ps4tools\OpenOrbis" -Force
+
+          # 1. OpenOrbis PS4 Toolchain v0.5.4 (busca automatica do ficheiro Windows/Toolchain)
+          $ooRel = Invoke-RestMethod "https://github.com"
+          $ooAsset = $ooRel.assets | Where-Object { $_.name -match "win.*\.zip$|toolchain.*\.tar\.gz$" } | Select-Object -First 1
+          Write-Host "A baixar OpenOrbis: $($ooAsset.browser_download_url)"
+          curl.exe -fL "$($ooAsset.browser_download_url)" -o "C:\ps4tools\$($ooAsset.name)"
+          New-Item -ItemType Directory -Force -Path "C:\ps4tools\OpenOrbis"
+          if ($ooAsset.name -like "*.zip") {
+            Expand-Archive "C:\ps4tools\$($ooAsset.name)" -DestinationPath "C:\ps4tools\OpenOrbis" -Force
+          } else {
+            tar -xzf "C:\ps4tools\$($ooAsset.name)" -C "C:\ps4tools\OpenOrbis"
+          }
 
           # 2. llvm-mingw 20240619 ucrt x86_64
-          curl.exe -L "https://github.com" -o "C:\ps4tools\llvm.zip"
+          curl.exe -fL "https://github.com" -o "C:\ps4tools\llvm.zip"
           Expand-Archive "C:\ps4tools\llvm.zip" -DestinationPath "C:\ps4tools" -Force
 
           # 3. Ninja
           New-Item -ItemType Directory -Force -Path "rpcs3-ps4\ps4-port\.build-tools"
-          curl.exe -L "https://github.com" -o "C:\ps4tools\ninja.zip"
+          curl.exe -fL "https://github.com" -o "C:\ps4tools\ninja.zip"
           Expand-Archive "C:\ps4tools\ninja.zip" -DestinationPath "rpcs3-ps4\ps4-port\.build-tools" -Force
 
           # 4. orbis-porting-kit e orbis-mesa-bundle
@@ -32,17 +41,25 @@ jobs:
           cd orbis-porting-kit; git checkout 213b0c38ff25ea7ca402c8844a6494086d0f1cae; cd ..
 
           New-Item -ItemType Directory -Force -Path "orbis-mesa-bundle"
-          curl.exe -L "https://github.com" -o "C:\ps4tools\mesa.tar.gz"
-          tar -xzf "C:\ps4tools\mesa.tar.gz" -C "orbis-mesa-bundle"
+          $mesaRel = Invoke-RestMethod "https://github.com"
+          $mesaAsset = $mesaRel.assets | Where-Object { $_.name -match "\.tar\.gz$|\.zip$" } | Select-Object -First 1
+          Write-Host "A baixar Mesa: $($mesaAsset.browser_download_url)"
+          curl.exe -fL "$($mesaAsset.browser_download_url)" -o "C:\ps4tools\$($mesaAsset.name)"
+          if ($mesaAsset.name -like "*.zip") {
+            Expand-Archive "C:\ps4tools\$($mesaAsset.name)" -DestinationPath "orbis-mesa-bundle" -Force
+          } else {
+            tar -xzf "C:\ps4tools\$($mesaAsset.name)" -C "orbis-mesa-bundle"
+          }
 
       - name: Prepare and Build RPCS3 PS4
         shell: pwsh
         working-directory: rpcs3-ps4
         run: |
-          $Sdk = "C:\ps4tools\OpenOrbis\OpenOrbis\PS4Toolchain"
-          if (-not (Test-Path $Sdk)) { $Sdk = "C:\ps4tools\OpenOrbis\PS4Toolchain" }
+          $Sdk = (Get-ChildItem "C:\ps4tools\OpenOrbis" -Recurse -Filter "PS4Toolchain" -Directory | Select-Object -First 1).FullName
+          if (-not $Sdk) { $Sdk = "C:\ps4tools\OpenOrbis" }
+          Write-Host "SDK detetado em: $Sdk"
           $Llvm = "C:\ps4tools\llvm-mingw-20240619-ucrt-x86_64\bin"
-          $Version = [regex]::Match((Get-Content rpcs3/util/ps4_build_version.hpp -Raw), 'ps4_build_version\[\]\s*=\s*"([0-9]+\.[0-9]{2})"').Groups[1].Value
+          $Version = [regex]::Match((Get-Content rpcs3/util/ps4_build_version.hpp -Raw), 'ps4_build_version\[\]\s*=\s*"([0-9]+\.[0-9]{2})"').Groups.Value
 
           git config user.email "builder@local"
           git config user.name "Builder"
